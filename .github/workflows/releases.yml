@@ -5,7 +5,7 @@ name: Create Release
 on:
   push:
     tags:
-      - 'v?[0-9]+.[0-9]+.[0-9]+(-[a-z]\.[0-9]+)?'
+      - 'v?[0-9]+.[0-9]+.[0-9]+(-[a-z]+\.[0-9]+)?'
 
 permissions:
   contents: write
@@ -14,9 +14,6 @@ jobs:
   build-and-release:
     name: Build and Release
     runs-on: ubuntu-latest
-    # Mark the release as a pre-release if the tag contains a hyphen (e.g., 1.2.3-dev1)
-    outputs:
-      is_prerelease: ${{ contains(github.ref, '-') }}
 
     steps:
       - name: Checkout code
@@ -66,5 +63,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true # Automatically creates release notes from commits.
-          prerelease: ${{ steps.build-and-release.outputs.is_prerelease }}
+          prerelease: ${{ contains(github.ref, '-') }} # Mark as pre-release if tag contains a hyphen
           files: ${{ steps.rename_asset.outputs.ASSET_PATH }}
