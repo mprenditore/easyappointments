@@ -423,6 +423,14 @@ body .modal.full-screen .modal-push {
     border-bottom: none;
 }
 
+#customers-page #customer-appointments .appointment-row.past-appointment {
+    opacity: 0.55;
+}
+
+#customers-page #customer-appointments .appointment-row.past-appointment a {
+    color: var(--bs-secondary-color);
+}
+
 /* Working plan table styles */
 #providers-page #providers .working-plan-view .work-start,
 #providers-page #providers .working-plan-view .work-end,

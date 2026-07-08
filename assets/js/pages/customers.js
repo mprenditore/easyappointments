@@ -321,7 +321,11 @@ App.Pages.Customers = (function () {
             }).appendTo($customerAppointments);
         }
 
-        customer.appointments.forEach((appointment) => {
+        const sortedAppointments = [...customer.appointments].sort(
+            (a, b) => moment(b.start_datetime).diff(moment(a.start_datetime)),
+        );
+
+        sortedAppointments.forEach((appointment) => {
             if (
                 vars('role_slug') === App.Layouts.Backend.DB_SLUG_PROVIDER &&
                 parseInt(appointment.id_users_provider) !== vars('user_id')
@@ -350,8 +354,10 @@ App.Pages.Customers = (function () {
                 true,
             );
 
+            const isPast = moment(appointment.start_datetime).isBefore(moment(), 'day');
+
             $('<div/>', {
-                'class': 'appointment-row',
+                'class': 'appointment-row' + (isPast ? ' past-appointment' : ''),
                 'data-id': appointment.id,
                 'html': [
                     // Service - Provider
