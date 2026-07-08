@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up PHP
         # This action is a robust way to set up PHP with extensions and Composer.
@@ -30,7 +30,7 @@ jobs:
           tools: composer
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -61,7 +61,7 @@ jobs:
 
       - name: Create GitHub Release
         # This action creates the release and uploads the renamed zip file as an asset.
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true # Automatically creates release notes from commits.
           prerelease: ${{ contains(github.ref, '-') }} # Mark as pre-release if tag contains a hyphen
