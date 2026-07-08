@@ -198,6 +198,8 @@ class EA_Controller extends CI_Controller
             return;
         }
 
+        require_once APPPATH . 'core/EA_Migration.php';
+
         $this->load->library('migration');
 
         $migrations = $this->migration->find_migrations();
