@@ -1,0 +1,68 @@
+name: Create Release
+
+# This workflow is triggered only when a new tag is pushed.
+# It's configured to match tags that look like version numbers (e.g., 1.5.0, v2.0.1, 1.2.3-rc1).
+on:
+  push:
+    tags:
+      - 'v?[0-9]+.[0-9]+.[0-9]+-[a-z]+\.[0-9]+'
+      - 'v?[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        # This action is a robust way to set up PHP with extensions and Composer.
+        # It's more efficient than using apt-get directly.
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: curl, xml, gd
+          tools: composer
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        # Assuming composer install is part of the npm build script.
+        run: |
+          npm install
+
+      - name: Build project and create zip
+        # This step runs the build script which should generate the zip file.
+        run: npm run build
+
+      - name: Get Tag Name
+        # This step extracts the tag name from the Git reference.
+        id: get_tag
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Rename asset
+        # Renames the generated zip file to include the new tag version.
+        id: rename_asset
+        run: |
+          original_file="easyappointments-0.0.0.zip"
+          new_file="easyappointments-${{ steps.get_tag.outputs.TAG_NAME }}.zip"
+          mv "$original_file" "$new_file"
+          echo "ASSET_PATH=./$new_file" >> $GITHUB_OUTPUT
+          echo "ASSET_NAME=$new_file" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        # This action creates the release and uploads the renamed zip file as an asset.
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true # Automatically creates release notes from commits.
+          prerelease: ${{ contains(github.ref, '-') }} # Mark as pre-release if tag contains a hyphen
+          files: ${{ steps.rename_asset.outputs.ASSET_PATH }}
