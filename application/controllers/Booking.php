@@ -271,7 +271,7 @@ class Booking extends EA_Controller
             $customer_token = md5(uniqid(mt_rand(), true));
 
             // Cache the token for 10 minutes.
-            $this->cache->save('customer-token-' . $customer_token, $customer['id'], 600);
+            $this->cache->save('customer-token-' . $customer_token, $appointment['id_users_customer'], 600);
         } else {
             $manage_mode = false;
             $customer_token = false;
@@ -383,17 +383,17 @@ class Booking extends EA_Controller
             // Security: Verify hash when updating an existing appointment
             if ($manage_mode && !empty($appointment['id'])) {
                 $appointment_hash = $post_data['appointment_hash'] ?? '';
-                
+
                 if (empty($appointment_hash)) {
                     throw new RuntimeException('Appointment hash is required for updates.');
                 }
-                
+
                 // Verify the hash matches the appointment being updated
                 $existing_appointments = $this->appointments_model->get([
                     'id' => $appointment['id'],
-                    'hash' => $appointment_hash
+                    'hash' => $appointment_hash,
                 ]);
-                
+
                 if (empty($existing_appointments)) {
                     throw new RuntimeException('Invalid appointment hash or appointment not found.');
                 }
@@ -446,7 +446,7 @@ class Booking extends EA_Controller
             }
 
             // Check appointment availability before registering it to the database.
-            $appointment['id_users_provider'] = $this->check_datetime_availability();
+            $appointment['id_users_provider'] = $this->check_datetime_availability($appointment);
 
             if (!$appointment['id_users_provider']) {
                 throw new RuntimeException(lang('requested_hour_is_unavailable'));
@@ -479,7 +479,14 @@ class Booking extends EA_Controller
                     // Validate traditional CAPTCHA
                     $captcha_phrase = session('captcha_phrase');
 
-                    if (strtoupper($captcha_phrase) !== strtoupper($captcha)) {
+                    // A phrase is valid for a single attempt, so that one solved image cannot be replayed
+                    $this->session->unset_userdata('captcha_phrase');
+
+                    if (
+                        empty($captcha_phrase) ||
+                        empty($captcha) ||
+                        strtoupper($captcha_phrase) !== strtoupper($captcha)
+                    ) {
                         json_response([
                             'captcha_verification' => false,
                         ]);
@@ -606,16 +613,14 @@ class Booking extends EA_Controller
      * Use this method just before the customer confirms the appointment registration. If the selected date was reserved
      * in the meanwhile, the customer must be prompted to select another time.
      *
+     * @param array $appointment Sanitized appointment data, its ID is only kept for a verified manage mode request.
+     *
      * @return int|null Returns the ID of the provider that is available for the appointment.
      *
      * @throws Exception
      */
-    protected function check_datetime_availability(): ?int
+    protected function check_datetime_availability(array $appointment): ?int
     {
-        $post_data = request('post_data');
-
-        $appointment = $post_data['appointment'];
-
         $appointment_start = new DateTime($appointment['start_datetime']);
 
         $date = $appointment_start->format('Y-m-d');

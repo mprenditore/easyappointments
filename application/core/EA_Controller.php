@@ -53,6 +53,7 @@
  * @property Users_model $users_model
  * @property Webhooks_model $webhooks_model
  * @property Blocked_periods_model $blocked_periods_model
+ * @property Working_plan_exceptions_model $working_plan_exceptions_model
  *
  * @property Accounts $accounts
  * @property Api $api
@@ -177,7 +178,9 @@ class EA_Controller extends CI_Controller
 
         $default_timezone = setting('default_timezone');
 
-        date_default_timezone_set($default_timezone);
+        if (!empty($default_timezone)) {
+            date_default_timezone_set($default_timezone);
+        }
     }
 
     /**
