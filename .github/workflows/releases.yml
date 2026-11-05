@@ -50,12 +50,18 @@ jobs:
         run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
       - name: Rename asset
-        # Renames the generated zip file to include the new tag version.
+        # Renames the generated zip file to include the new tag version. The build names the zip
+        # after the version in application/config/app.php, which can differ from the tag.
         id: rename_asset
         run: |
-          original_file="easyappointments-0.0.0.zip"
           new_file="easyappointments-${{ steps.get_tag.outputs.TAG_NAME }}.zip"
-          mv "$original_file" "$new_file"
+          shopt -s nullglob
+          zips=(easyappointments-*.zip)
+          if [ "${#zips[@]}" -ne 1 ]; then
+            echo "Expected exactly one zip, found: ${zips[*]:-none}" >&2
+            exit 1
+          fi
+          [ "${zips[0]}" = "$new_file" ] || mv "${zips[0]}" "$new_file"
           echo "ASSET_PATH=./$new_file" >> $GITHUB_OUTPUT
           echo "ASSET_NAME=$new_file" >> $GITHUB_OUTPUT
 
