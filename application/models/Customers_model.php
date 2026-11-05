@@ -62,11 +62,13 @@ class Customers_model extends EA_Model
      */
     public function save(array $customer): int
     {
-        $this->validate($customer);
-
-        if ($this->exists($customer) && empty($customer['id'])) {
+        // Resolve the record ID before validating, otherwise the email uniqueness check will reject
+        // returning customers whose ID was not provided by the caller (e.g. the booking page).
+        if (empty($customer['id']) && $this->exists($customer)) {
             $customer['id'] = $this->find_record_id($customer);
         }
+
+        $this->validate($customer);
 
         if (empty($customer['id'])) {
             return $this->insert($customer);
@@ -315,6 +317,16 @@ class Customers_model extends EA_Model
      */
     public function delete(int $customer_id): void
     {
+        $customer = $this->db
+            ->get_where('users', ['id' => $customer_id, 'id_roles' => $this->get_customer_role_id()])
+            ->row_array();
+
+        if (!$customer) {
+            throw new InvalidArgumentException(
+                'The provided customer ID was not found in the database: ' . $customer_id,
+            );
+        }
+
         // Anonymize consent records before deleting customer (GDPR compliance)
         $this->db->where('id_users', $customer_id);
         $this->db->update('consents', [
@@ -325,8 +337,6 @@ class Customers_model extends EA_Model
         ]);
 
         // Also anonymize any consents that match the customer's email
-        $customer = $this->db->get_where('users', ['id' => $customer_id])->row_array();
-
         if (!empty($customer['email'])) {
             $this->db->where('email', $customer['email']);
             $this->db->where('id_users IS NULL', null, false);
@@ -337,7 +347,7 @@ class Customers_model extends EA_Model
             ]);
         }
 
-        $this->db->delete('users', ['id' => $customer_id]);
+        $this->db->delete('users', ['id' => $customer_id, 'id_roles' => $this->get_customer_role_id()]);
     }
 
     /**
@@ -349,7 +359,9 @@ class Customers_model extends EA_Model
      */
     public function find(int $customer_id): array
     {
-        $customer = $this->db->get_where('users', ['id' => $customer_id])->row_array();
+        $customer = $this->db
+            ->get_where('users', ['id' => $customer_id, 'id_roles' => $this->get_customer_role_id()])
+            ->row_array();
 
         if (!$customer) {
             throw new InvalidArgumentException(
@@ -383,7 +395,7 @@ class Customers_model extends EA_Model
         }
 
         // Check whether the customer exists.
-        $query = $this->db->get_where('users', ['id' => $customer_id]);
+        $query = $this->db->get_where('users', ['id' => $customer_id, 'id_roles' => $this->get_customer_role_id()]);
 
         if (!$query->num_rows()) {
             throw new InvalidArgumentException(

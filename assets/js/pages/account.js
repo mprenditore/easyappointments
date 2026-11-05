@@ -29,12 +29,15 @@ App.Pages.Account = (function () {
     const $language = $('#language');
     const $timezone = $('#timezone');
     const $username = $('#username');
+    const $currentPassword = $('#current-password');
     const $password = $('#password');
     const $retypePassword = $('#retype-password');
     const $calendarView = $('#calendar-view');
     const notifications = $('#notifications');
     const $saveSettings = $('#save-settings');
     const $footerUserDisplayName = $('#footer-user-display-name');
+    let savedEmail = '';
+    let savedUsername = '';
 
     /**
      * Check if the form has invalid values.
@@ -70,6 +73,14 @@ App.Pages.Account = (function () {
                 throw new Error(lang('passwords_mismatch'));
             }
 
+            const requiresCurrentPassword =
+                $password.val() || $email.val() !== savedEmail || $username.val() !== savedUsername;
+
+            if (requiresCurrentPassword && !$currentPassword.val()) {
+                $currentPassword.addClass('is-invalid');
+                throw new Error(lang('fields_are_required'));
+            }
+
             // Validate user email.
 
             const emailValue = $email.val();
@@ -97,6 +108,7 @@ App.Pages.Account = (function () {
      */
     function deserialize(account) {
         $userId.val(account.id);
+        $currentPassword.val('');
         $firstName.val(account.first_name);
         $lastName.val(account.last_name);
         $email.val(account.email);
@@ -110,6 +122,8 @@ App.Pages.Account = (function () {
         $language.val(account.language);
         $timezone.val(account.timezone);
         $username.val(account.settings.username);
+        savedEmail = account.email;
+        savedUsername = account.settings.username;
         $password.val('');
         $retypePassword.val('');
         $calendarView.val(account.settings.calendar_view);
@@ -157,8 +171,14 @@ App.Pages.Account = (function () {
 
         const account = serialize();
 
-        App.Http.Account.save(account).done(() => {
+        App.Http.Account.save(account, $currentPassword.val()).done(() => {
             App.Layouts.Backend.displayNotification(lang('settings_saved'));
+
+            $currentPassword.val('');
+            $password.val('');
+            $retypePassword.val('');
+            savedEmail = account.email;
+            savedUsername = account.settings.username;
 
             $footerUserDisplayName.text('Hello, ' + $firstName.val() + ' ' + $lastName.val() + '!');
         });

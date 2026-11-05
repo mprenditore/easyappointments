@@ -1,5 +1,6 @@
 /*.zip
 /.idea/
+/.playwright-mcp/
 /.tmp-package/
 /build/
 /docs/apigen/html
@@ -31,3 +32,4 @@
 /vendor/
 /metafile
 .DS_Store
+

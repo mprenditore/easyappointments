@@ -131,8 +131,20 @@ class Account extends EA_Controller
 
             $this->users_model->optional($account['settings'], $this->optional_user_setting_fields);
 
-            if (empty($account['password'])) {
-                unset($account['password']);
+            if (empty($account['settings']['password'])) {
+                unset($account['settings']['password']);
+            }
+
+            // The e-mail and username identify the account in the password recovery flow, so changing them requires
+            // the current password just like a password change does.
+            $user = $this->users_model->find(session('user_id'));
+
+            if (
+                !empty($account['settings']['password']) ||
+                ($account['email'] ?? null) !== $user['email'] ||
+                ($account['settings']['username'] ?? null) !== $user['settings']['username']
+            ) {
+                $this->verify_current_password(request('current_password', ''));
             }
 
             $this->users_model->save($account);
@@ -147,6 +159,26 @@ class Account extends EA_Controller
             response();
         } catch (Throwable $e) {
             json_exception($e);
+        }
+    }
+
+    /**
+     * Make sure the provided password matches the one of the current user.
+     *
+     * Required before a password, e-mail or username change, so that a hijacked session alone is not enough to take
+     * over the account.
+     *
+     * @throws InvalidArgumentException
+     */
+    private function verify_current_password(string $current_password): void
+    {
+        $user_settings = $this->db->get_where('user_settings', ['id_users' => session('user_id')])->row_array();
+
+        if (
+            empty($user_settings) ||
+            !verify_password($user_settings['salt'] ?? '', $current_password, $user_settings['password'] ?? '')
+        ) {
+            throw new InvalidArgumentException(lang('current_password_is_invalid'));
         }
     }
 
